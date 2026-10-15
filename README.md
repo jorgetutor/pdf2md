@@ -47,3 +47,8 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/in:ro -v "$PWD":/out \
 
 Every push to `main` publishes `:latest`; a tag `vX.Y.Z` publishes `:X.Y.Z` and `:X.Y`
 (GitHub Actions, linux/amd64 + linux/arm64).
+
+## License
+
+[MIT](LICENSE): use, copy, modify and distribute freely. Provided as is, without warranty
+of any kind; the author is not liable for any damages arising from its use.

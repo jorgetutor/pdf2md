@@ -1,5 +1,6 @@
 # PDF -> Markdown converter for LLM use (pymupdf4llm + layout model + tesseract OCR)
 FROM python:3.12-slim
+LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.description="Convert PDF documents to LLM-friendly Markdown (pymupdf4llm + tesseract OCR)"
 
 RUN apt-get update \
