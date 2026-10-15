@@ -20,7 +20,7 @@ The first run pulls `ghcr.io/jorgetutor/pdf2md:latest`.
 
 ```bash
 pdf2md document.pdf                  # -> ./<document name>/<document name>.md + images/
-pdf2md *.pdf --out-root ~/llm-docs   # several documents, custom output folder
+pdf2md *.pdf -o ~/llm-docs          # several documents, custom output folder
 pdf2md document.pdf --no-images      # text only
 pdf2md document.pdf --pages 1-40 --lang spa
 pdf2md --help                        # all options
@@ -40,7 +40,7 @@ Pin a version with `PDF2MD_IMAGE=ghcr.io/jorgetutor/pdf2md:1.0.0 pdf2md document
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/in:ro -v "$PWD":/out \
-  ghcr.io/jorgetutor/pdf2md "/in/document.pdf" --out-root /out
+  ghcr.io/jorgetutor/pdf2md "/in/document.pdf" -o /out
 ```
 
 ## Releases

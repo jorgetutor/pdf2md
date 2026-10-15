@@ -152,8 +152,9 @@ def doc_name(pdf_path):
 def main():
     ap = argparse.ArgumentParser(description="Convert a PDF to LLM-friendly Markdown.")
     ap.add_argument("pdf")
-    ap.add_argument("--out-root", default=".",
-                    help="each document goes to <out-root>/<document name>/<document name>.md (+ images/)")
+    ap.add_argument("-o", "--output-dir", default=".",
+                    help="each document goes to <output-dir>/<document name>/<document name>.md "
+                         "(+ images/); default: current directory")
     ap.add_argument("--pages", help="1-based pages, e.g. 1-20 or 3,5,10-12")
     ap.add_argument("--no-images", action="store_true",
                     help="do not extract images (default: save to images/ and link them)")
@@ -168,7 +169,7 @@ def main():
     print(f"converting {os.path.basename(a.pdf)} ...", file=sys.stderr)
 
     slug = doc_name(a.pdf)
-    out_dir = os.path.abspath(os.path.join(a.out_root, slug))
+    out_dir = os.path.abspath(os.path.join(a.output_dir, slug))
     os.makedirs(out_dir, exist_ok=True)
     output = os.path.join(out_dir, slug + ".md")
     doc = pymupdf.open(a.pdf)
