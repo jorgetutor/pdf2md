@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Convert a PDF to Markdown with pymupdf4llm (runs inside the pdf2md Docker image)."""
 import argparse
+import glob
+import hashlib
 import os
 import re
 import sys
@@ -144,6 +146,48 @@ def use_original_images(md, doc, img_dir="images"):
     return link_re.sub(lambda m: f"![{m.group(1)}]({replace.get(m.group(2), m.group(2))})", md)
 
 
+def dedupe_images(doc_dir, img_dir="images"):
+    """Keep one copy of byte-identical images and point every link at it.
+
+    The kept copy is the first one linked in the Markdown (else the first by name).
+    Images that differ in any byte (e.g. other dimensions) are left alone.
+    Returns the number of files removed.
+    """
+    folder = os.path.join(doc_dir, img_dir)
+    if not os.path.isdir(folder):
+        return 0
+    mds = sorted(glob.glob(os.path.join(doc_dir, "*.md")))
+    texts = {p: open(p, encoding="utf-8").read() for p in mds}
+    link_re = re.compile(r"(\]\()(" + re.escape(img_dir) + r"/[^)\s]+)(\))")
+    order = {}
+    for text in texts.values():
+        for m in link_re.finditer(text):
+            order.setdefault(m.group(2), len(order))
+
+    groups = {}
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(folder, name)
+        if os.path.isfile(path):
+            with open(path, "rb") as fh:
+                groups.setdefault(hashlib.sha256(fh.read()).hexdigest(), []).append(f"{img_dir}/{name}")
+    replace = {}
+    for files in groups.values():
+        if len(files) > 1:
+            files.sort(key=lambda f: (order.get(f, len(order)), f))
+            replace.update({f: files[0] for f in files[1:]})
+    if not replace:
+        return 0
+
+    for path, text in texts.items():
+        new = link_re.sub(lambda m: m.group(1) + replace.get(m.group(2), m.group(2)) + m.group(3), text)
+        if new != text:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(new)
+    for f in replace:  # only after the links are rewritten
+        os.remove(os.path.join(doc_dir, f))
+    return len(replace)
+
+
 def doc_name(pdf_path):
     """Folder/file name for a document: the PDF file name without extension."""
     return os.path.splitext(os.path.basename(pdf_path))[0] or "document"
@@ -151,7 +195,7 @@ def doc_name(pdf_path):
 
 def main():
     ap = argparse.ArgumentParser(description="Convert a PDF to LLM-friendly Markdown.")
-    ap.add_argument("pdf")
+    ap.add_argument("pdf", help="PDF file (or, with --dedupe-only, an already converted folder)")
     ap.add_argument("-o", "--output-dir", default=".",
                     help="each document goes to <output-dir>/<document name>/<document name>.md "
                          "(+ images/); default: current directory")
@@ -165,7 +209,15 @@ def main():
     ap.add_argument("--lang", default="eng", help="OCR language(s), e.g. eng, spa, eng+spa")
     ap.add_argument("--keep-headers", action="store_true",
                     help="keep running page headers/footers")
+    ap.add_argument("--no-dedupe", action="store_true",
+                    help="keep byte-identical duplicate images (default: keep one, relink)")
+    ap.add_argument("--dedupe-only", action="store_true",
+                    help="don't convert: deduplicate images of an already converted folder")
     a = ap.parse_args()
+    if a.dedupe_only:
+        n = dedupe_images(a.pdf)
+        print(f"{a.pdf}: removed {n} duplicate image(s)", file=sys.stderr)
+        return
     print(f"converting {os.path.basename(a.pdf)} ...", file=sys.stderr)
 
     slug = doc_name(a.pdf)
@@ -214,6 +266,10 @@ def main():
 
     with open(output, "w", encoding="utf-8") as fh:
         fh.write(md)
+    if not a.no_images and not a.no_dedupe:
+        n = dedupe_images(out_dir)
+        if n:
+            print(f"removed {n} duplicate image(s)", file=sys.stderr)
     print(f"wrote {output} ({doc.page_count} pages, {len(md.split())} words)", file=sys.stderr)
 
 

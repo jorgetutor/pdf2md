@@ -6,6 +6,11 @@
 #
 # Each document goes to <DIR>/<document name>/<document name>.md with its figures in images/.
 # -o / --output-dir DIR defaults to the current directory.
+#
+#   pdf2md.sh --dedupe DIR [more DIR ...]
+#
+# removes byte-identical duplicate images from already converted folders and relinks them
+# (new conversions do this automatically).
 # Override the image with PDF2MD_IMAGE=... (e.g. a pinned version tag).
 set -euo pipefail
 
@@ -14,12 +19,26 @@ OUT_DIR="$PWD"
 
 usage() {
   echo "usage: $(basename "$0") file.pdf [more.pdf ...] [-o DIR] [options]" >&2
+  echo "       $(basename "$0") --dedupe DIR [more DIR ...]   (dedupe images of converted folders)" >&2
   echo "converter options:" >&2
   docker run --rm "$IMAGE" --help 2>/dev/null | sed -n '/^options:/,$p' | sed 1d >&2 || true
   exit 1
 }
 
 command -v docker >/dev/null || { echo "error: docker is required" >&2; exit 1; }
+
+if [ "${1:-}" = "--dedupe" ]; then
+  shift; [ $# -gt 0 ] || usage
+  docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull "$IMAGE" >&2
+  status=0
+  for dir in "$@"; do
+    if [ ! -d "$dir/images" ]; then echo "error: no images/ folder in: $dir" >&2; status=1; continue; fi
+    DIR="$(realpath "$dir")"
+    docker run --rm -u "$(id -u):$(id -g)" -v "$DIR":/doc "$IMAGE" /doc --dedupe-only 2>&1 \
+      | sed "s#^/doc:#$DIR:#" >&2 || status=1
+  done
+  exit "$status"
+fi
 
 PDFS=() ARGS=()
 while [ $# -gt 0 ]; do

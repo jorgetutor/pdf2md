@@ -5,6 +5,7 @@ Convert PDF documents (books, papers, reports, manuals...) into clean, LLM-frien
 - Headings follow the PDF's bookmarks (e.g. chapter `#`, section `##`, subsection `###`)
 - Lists, tables and paragraphs reconstructed by [pymupdf4llm](https://github.com/pymupdf/pymupdf4llm)'s layout model
 - Figures saved as the **original embedded images** (no re-rendering), linked from the Markdown
+- Repeated images (byte-identical files, e.g. a logo on every chapter) stored once, all links point to it
 - OCR for scanned pages (tesseract, English + Spanish)
 
 ## Install
@@ -23,6 +24,7 @@ pdf2md document.pdf                  # -> ./<document name>/<document name>.md +
 pdf2md *.pdf -o ~/llm-docs          # several documents, custom output folder
 pdf2md document.pdf --no-images      # text only
 pdf2md document.pdf --pages 1-40 --lang spa
+pdf2md --dedupe "<document name>"/  # dedupe images of an already converted folder
 pdf2md --help                        # all options
 ```
 
